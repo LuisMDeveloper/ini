@@ -6,7 +6,7 @@ exports.unsafe = unsafe
 
 var eol = process.platform === 'win32' ? '\r\n' : '\n'
 
-function encode (obj, opt) {
+function encode(obj, opt) {
   var children = []
   var out = ''
 
@@ -31,13 +31,20 @@ function encode (obj, opt) {
     } else if (val && typeof val === 'object') {
       children.push(k)
     } else {
-      out += safe(k) + separator + safe(val) + eol
+      if (opt.section && opt.section.length) {
+        out += safe(opt.section) + '.' + safe(k) + separator + safe(val) + eol
+      } else {
+        out += safe(k) + separator + safe(val) + eol
+      }
+
     }
   })
 
-  if (opt.section && out.length) {
-    out = '[' + safe(opt.section) + ']' + eol + out
-  }
+  /*
+    if (opt.section && out.length) {
+      out = '[' + safe(opt.section) + ']' + eol + out
+    }
+    */
 
   children.forEach(function (k, _, __) {
     var nk = dotSplit(k).join('\\.')
@@ -55,16 +62,16 @@ function encode (obj, opt) {
   return out
 }
 
-function dotSplit (str) {
+function dotSplit(str) {
   return str.replace(/\1/g, '\u0002LITERAL\\1LITERAL\u0002')
     .replace(/\\\./g, '\u0001')
     .split(/\./).map(function (part) {
-    return part.replace(/\1/g, '\\.')
-      .replace(/\2LITERAL\\1LITERAL\2/g, '\u0001')
-  })
+      return part.replace(/\1/g, '\\.')
+        .replace(/\2LITERAL\\1LITERAL\2/g, '\u0001')
+    })
 }
 
-function decode (str) {
+function decode(str) {
   var out = {}
   var p = out
   var section = null
@@ -138,30 +145,30 @@ function decode (str) {
   return out
 }
 
-function isQuoted (val) {
+function isQuoted(val) {
   return (val.charAt(0) === '"' && val.slice(-1) === '"') ||
     (val.charAt(0) === "'" && val.slice(-1) === "'")
 }
 
-function safe (val) {
+function safe(val) {
   return (typeof val !== 'string' ||
     val.match(/[=\r\n]/) ||
     val.match(/^\[/) ||
     (val.length > 1 &&
-     isQuoted(val)) ||
+      isQuoted(val)) ||
     val !== val.trim()) ?
-      JSON.stringify(val) :
-      val.replace(/;/g, '\\;').replace(/#/g, '\\#')
+    JSON.stringify(val) :
+    val.replace(/;/g, '\\;').replace(/#/g, '\\#')
 }
 
-function unsafe (val, doUnesc) {
+function unsafe(val, doUnesc) {
   val = (val || '').trim()
   if (isQuoted(val)) {
     // remove the single quotes before calling JSON.parse
     if (val.charAt(0) === "'") {
       val = val.substr(1, val.length - 2)
     }
-    try { val = JSON.parse(val) } catch (_) {}
+    try { val = JSON.parse(val) } catch (_) { }
   } else {
     // walk the val to find the first not-escaped ; character
     var esc = false
